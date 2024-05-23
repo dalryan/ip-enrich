@@ -41,7 +41,7 @@ The project uses the following libraries:
 - [Lipgloss](https://github.com/charmbracelet/lipgloss): For styling the interface.
 - [Bubbles](https://github.com/charmbracelet/bubbles): For additional UI components like the spinner and viewport.
 - [Cobra](https://github.com/spf13/cobra): For CLI commands and flags.
-- [Chroma](github.com/alecthomas/chroma/v2): For syntax highlighting in the JSON view.
+- [Chroma](https://github.com/alecthomas/chroma): For syntax highlighting in the JSON view.
 
 The tool was mostly written as an exercise to become familiar with TUIs, Bubbletea, and the MVU pattern. It also takes some inspiration from the excellent [ASN](https://github.com/nitefood/asn)
 
