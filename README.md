@@ -1,5 +1,10 @@
 # IP-Enrich
 
+[![CI](https://github.com/dalryan/ip-enrich/actions/workflows/build.yml/badge.svg)](https://github.com/dalryan/ip-enrich/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dalryan/ip-enrich)](https://goreportcard.com/report/github.com/dalryan/ip-enrich)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/dalryan/ip-enrich)](https://github.com/dalryan/ip-enrich/blob/main/go.mod)
+
 **A very fast threat intel aggregator.**
 
 IP-Enrich takes a single IP target and concurrently fetches real-time intel from public sources.
