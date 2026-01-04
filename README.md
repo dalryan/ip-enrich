@@ -11,13 +11,15 @@ IP-Enrich takes a single IP target and concurrently fetches real-time intel from
 
 ## Install
 
-### Via Go (Recommended)
+### Binary (Recommended)
+Download a pre-compiled binary for your OS from the [Releases Page](https://github.com/dalryan/ip-enrich/releases).
 
+### Go install (Also Recommended)
 ```shell
-go install github.com/dalryan/ip-enrich@latest
+go install github.com/dalryan/ip-enrich@v0.1.0
 ```
 
-### From Source
+### Build from source
 ```shell
 git clone https://github.com/dalryan/ip-enrich.git
 cd ip-enrich
