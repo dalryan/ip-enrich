@@ -1,69 +1,99 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/dalryan/ip-enrich/internal/sources"
-	"github.com/dalryan/ip-enrich/internal/ui"
-	"github.com/dalryan/ip-enrich/internal/utils"
-	"github.com/spf13/cobra"
+	"io"
+	"net"
 	"os"
-	"strings"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/dalryan/ip-enrich/internal/output"
+	"github.com/dalryan/ip-enrich/internal/provider"
+	_ "github.com/dalryan/ip-enrich/internal/providers"
+	"github.com/spf13/cobra"
 )
 
-var ip string
+var (
+	outputFormat   string
+	providerFilter []string
+	timeout        int
+)
 
+// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "ip-enrich [ip]",
-	Short: "A quick and dirty tool for enriching an IP Address",
-	Args:  cobra.MaximumNArgs(1),
-	Run:   Run,
-}
+	Short: "Aggregates threat intelligence for an IP address",
+	Long: `A high-performance aggregator for IP threat intelligence.
+    
+Examples:
+  ip-enrich 1.1.1.1
+  ip-enrich 1.1.1.1 -p shodan,greynoise
+  ip-enrich -o json 8.8.8.8`,
 
-func Run(cmd *cobra.Command, args []string) {
-	if len(args) > 0 {
-		ip = args[0]
-	}
-	if err := utils.ValidateIPAddr(ip); err != nil {
-		fmt.Printf("Not a valid IP address: %s", ip)
-		return
-	}
+	Args: cobra.ExactArgs(1),
 
-	initialModel := ui.Model{
-		Ip:              ip,
-		ViewingResponse: false,
-		Results:         make(map[string]sources.Result),
-		Spinner:         spinner.New(spinner.WithSpinner(spinner.Jump)),
-	}
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ip := args[0]
 
-	for i, endpoint := range ui.Endpoints {
-		updatedURL := strings.Replace(endpoint.URL, "{ip}", ip, -1)
-		ui.Endpoints[i].URL = updatedURL
-		initialModel.Results[endpoint.Name] = sources.Result{
-			Data: nil,
-			Url:  updatedURL,
-			Code: 0,
-			Done: false,
+		if net.ParseIP(ip) == nil {
+			return fmt.Errorf("'%s' is not a valid IP address", ip)
 		}
-	}
 
-	initialModel.Spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+		ctx, cancel := context.WithCancel(cmd.Context())
+		defer cancel()
 
-	if _, err := tea.NewProgram(initialModel, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
+		go func() {
+			sigChan := make(chan os.Signal, 1)
+			signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+			<-sigChan
+			cancel()
+		}()
+
+		if len(providerFilter) > 0 {
+			unknown := provider.Validate(providerFilter)
+			if len(unknown) > 0 {
+				cmd.PrintErrf("Warning: unknown providers ignored: %v\n", unknown)
+			}
+		}
+
+		return run(ctx, ip, providerFilter, outputFormat, timeout, cmd.OutOrStdout())
+	},
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+// Execute adds all child commands to the root command and sets flags appropriately.
+func Execute() error {
+	return rootCmd.Execute()
 }
 
+// init initialises all flags
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&ip, "ip", "i", "", "IP address to enrich")
+	rootCmd.PersistentFlags().StringSliceVarP(&providerFilter, "providers", "p", []string{}, "Comma-separated list of providers")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "pretty", "Output format: json, pretty")
+	rootCmd.PersistentFlags().IntVarP(&timeout, "timeout", "t", 10, "HTTP timeout in seconds")
+}
+
+// run takes the list of providers and executes them
+func run(ctx context.Context, ip string, providerIDs []string, format string, timeoutSeconds int, w io.Writer) error {
+	providers := provider.Filter(providerIDs)
+	if len(providers) == 0 {
+		return fmt.Errorf("no providers matched request")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSeconds)*time.Second)
+	defer cancel()
+
+	executor := provider.NewExecutor()
+	results := executor.Execute(ctx, ip, providers, nil)
+
+	report := output.NewReport(ip, time.Now().UTC().Format(time.RFC3339), results)
+
+	formatter, err := output.GetFormatter(format, w)
+	if err != nil {
+		return err
+	}
+
+	return formatter.Format(report)
 }

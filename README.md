@@ -1,48 +1,80 @@
 # IP-Enrich
 
-IP-Enrich is a Go-based TUI that provides a quick and dirty enrichment of a single IP Address by aggregating data from multiple API endpoints. 
-It requires no API keys or local DBs. 
+**A very fast threat intel aggregator.**
 
-![Demo](assets/demo.gif)
+IP-Enrich takes a single IP target and concurrently fetches real-time intel from public sources.
+
+## Install
+
+### Via Go (Recommended)
+
+```shell
+go install github.com/dalryan/ip-enrich@latest
+```
+
+### From Source
+```shell
+git clone https://github.com/dalryan/ip-enrich.git
+cd ip-enrich
+go build -o ip-enrich .
+```
 
 ## Usage
 
-To get started, you need to have [Go](https://go.dev/) installed. Once installed, follow these steps:
+![Demo](assets/demo.gif)
 
-1. Clone the repository: `git clone https://github.com/dalryan/ip-enrich.git`
-2. Navigate to the project directory: `cd ip-enrich`
-3. Build the project: `go build`
-4. Run the project: `./ip-enrich <ip>`
+### Basic scan
 
+Scan an IP using all providers
 
-## Adding New API Endpoints
+```shell
+ip-enrich 8.8.8.8
+```
 
-To add a new API endpoint, you need to modify the `Endpoints` variable in the `model.go` file. Each endpoint is represented as a `APIQueryUnit` which includes the name of the endpoint, the URL, and the model representing the response.
+### List all providers
+```shell
+ip-enrich list
+```
 
-Currently, it assumes the endpoint you are adding requires only a simple GET request. If the endpoint requires additional headers, or a different HTTP method, you will need to modify the `api.go` file to handle these requirements.
+### Advanced Filtering
+
+Scan an IP using only specific providers (comma-separated):
+
+```shell
+ip-enrich 1.1.1.1 --providers shodan,greynoise
+```
+
+### Automation & Piping
+
+Outputs valid, raw JSON for use with tools like jq:
+
+```shell
+ip-enrich 1.1.1.1 --output json | jq '.results[] | select(.status_code == 200)'
+```
+
+## Supported providers:
+- shodan
+- ipapi
+- ipwhois
+- stopforumspam
+- greynoise
+
 
 ## Roadmap
 
-(aka things I will probably never do)
+### Features
+- [ ] Add support for domain translation
+- [ ] Add support for API Keys / Tokens
+- [ ] Add support for bulk enrichment
+- [ ] Add support for local DB integration
+- [ ] Add an optional "summary" 
 
-- [ ] Add a summary of the results in the choices view.
-- [ ] Add a JSON export of the results.
-- [ ] Add support for stdin/stdout piping (e.g. `echo "127.0.0.1" | ip-enrich - | jq ..` )
-- [ ] Add more API endpoints for IP enrichment.
-- [ ] Add support for host/domain enrichment.
-- [ ] Add support for local DB and file lookups.
-- [ ] Add some tests? 
+### Providers
+- [ ] BGPView API
+- [ ] Team Cymru
 
-## Reference
 
-The project uses the following libraries:
+## Disclaimer & Responsible Use
 
-- [Bubbletea](https://github.com/charmbracelet/bubbletea): For the MVU pattern.
-- [Lipgloss](https://github.com/charmbracelet/lipgloss): For styling the interface.
-- [Bubbles](https://github.com/charmbracelet/bubbles): For additional UI components like the spinner and viewport.
-- [Cobra](https://github.com/spf13/cobra): For CLI commands and flags.
-- [Chroma](https://github.com/alecthomas/chroma): For syntax highlighting in the JSON view.
-
-The tool was mostly written as an exercise to become familiar with TUIs, Bubbletea, and the MVU pattern. It also takes some inspiration from the excellent [ASN](https://github.com/nitefood/asn)
-
-The tool is intended only for single IP address enrichment and is not intended for bulk enrichment.
+- Be responsible when using this tool.
+- Always respect the rate-limits and ToS defined by the downstream services. Don't abuse them.
