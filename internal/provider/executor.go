@@ -107,7 +107,9 @@ func (e *Executor) executeOne(ctx context.Context, ip string, p Provider) *Resul
 		}
 		return NewErrorResult(p, 0, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	limitReader := io.LimitReader(resp.Body, MaxBodySize)
 	body, err := io.ReadAll(limitReader)

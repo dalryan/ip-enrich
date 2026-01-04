@@ -12,19 +12,23 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List available intelligence providers",
-	Long:  `Displays a table of all registered providers.`,
+	Args:  cobra.NoArgs,
 
-	Args: cobra.NoArgs,
-
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		providers := provider.All()
 		w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tNAME")
-		fmt.Fprintln(w, "--\t----")
-		for _, p := range providers {
-			fmt.Fprintf(w, "%s\t%s\n", p.ID(), p.Name())
+		if _, err := fmt.Fprintln(w, "ID\tNAME"); err != nil {
+			return err
 		}
-		w.Flush()
+		if _, err := fmt.Fprintln(w, "--\t----"); err != nil {
+			return err
+		}
+		for _, p := range providers {
+			if _, err := fmt.Fprintf(w, "%s\t%s\n", p.ID(), p.Name()); err != nil {
+				return err
+			}
+		}
+		return w.Flush()
 	},
 }
 
